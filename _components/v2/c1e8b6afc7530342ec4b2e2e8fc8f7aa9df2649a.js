@@ -446,7 +446,32 @@ const Le = [
   ["path", { d: "M18 6 6 18", key: "1bl5f8" }],
   ["path", { d: "m6 6 12 12", key: "d8bk6v" }]
 ], je = n("x", Le);
-function Se({ onSelectProfile: r }) {
+function Se({ onAuthSuccess: r }) {
+  const [i, s] = x(null), [a, l] = x(""), [m, h] = x(""), [c, o] = x(""), [d, p] = x(!1), g = {
+    irk: "Кладовщик ИРК",
+    "tool-warehouse": "Кладовщик инструментального склада",
+    laboratory: "Лаборант"
+  }, F = async (u) => {
+    u.preventDefault(), o(""), p(!0);
+    try {
+      const E = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role: i,
+          login: a,
+          password: m
+        })
+      }), B = await E.json();
+      if (!E.ok)
+        throw new Error(B.error || "Ошибка входа");
+      r(B.user), s(null), l(""), h("");
+    } catch (E) {
+      o(E.message || "Ошибка входа");
+    } finally {
+      p(!1);
+    }
+  };
   return /* @__PURE__ */ t("div", { className: "min-h-screen bg-white flex flex-col", children: [
     /* @__PURE__ */ e("header", { className: "bg-[#0d9488] border-b border-[#0f766e]", children: /* @__PURE__ */ e("div", { className: "max-w-7xl mx-auto px-6 py-6", children: /* @__PURE__ */ e("h1", { className: "text-white text-2xl", children: "Информационная система учета инструментов" }) }) }),
     /* @__PURE__ */ e("main", { className: "flex-1 flex items-center justify-center px-6 py-12", children: /* @__PURE__ */ t("div", { className: "w-full max-w-4xl", children: [
@@ -473,22 +498,82 @@ function Se({ onSelectProfile: r }) {
           description: "Работа с поверкой и калибровкой оборудования",
           icon: v
         }
-      ].map((s) => {
-        const a = s.icon;
+      ].map((u) => {
+        const E = u.icon;
         return /* @__PURE__ */ t(
           "button",
           {
-            onClick: () => r(s.id),
+            onClick: () => {
+              s(u.id), l(""), h(""), o("");
+            },
             className: "group bg-white border-2 border-gray-200 p-8 hover:border-[#0d9488] hover:bg-[#f0fdfa] transition-all text-left",
             children: [
-              /* @__PURE__ */ e("div", { className: "w-14 h-14 bg-[#f0fdfa] flex items-center justify-center mb-6 group-hover:bg-[#0d9488] transition-colors", children: /* @__PURE__ */ e(a, { className: "w-7 h-7 text-[#0d9488] group-hover:text-white" }) }),
-              /* @__PURE__ */ e("h3", { className: "text-lg text-gray-900 mb-2", children: s.title }),
-              /* @__PURE__ */ e("p", { className: "text-sm text-gray-600", children: s.description })
+              /* @__PURE__ */ e("div", { className: "w-14 h-14 bg-[#f0fdfa] flex items-center justify-center mb-6 group-hover:bg-[#0d9488] transition-colors", children: /* @__PURE__ */ e(E, { className: "w-7 h-7 text-[#0d9488] group-hover:text-white" }) }),
+              /* @__PURE__ */ e("h3", { className: "text-lg text-gray-900 mb-2", children: u.title }),
+              /* @__PURE__ */ e("p", { className: "text-sm text-gray-600", children: u.description })
             ]
           },
-          s.id
+          u.id
         );
       }) })
+    ] }) }),
+    i && /* @__PURE__ */ e("div", { className: "fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50", children: /* @__PURE__ */ t("div", { className: "w-full max-w-md bg-white border border-gray-200 p-6", children: [
+      /* @__PURE__ */ e("h3", { className: "text-xl text-gray-900 mb-2", children: "Вход в систему" }),
+      /* @__PURE__ */ t("p", { className: "text-sm text-gray-600 mb-5", children: [
+        "Выбран профиль: ",
+        g[i]
+      ] }),
+      /* @__PURE__ */ t("form", { onSubmit: F, className: "space-y-4", children: [
+        /* @__PURE__ */ t("div", { children: [
+          /* @__PURE__ */ e("label", { className: "block text-sm text-gray-700 mb-1", children: "Логин" }),
+          /* @__PURE__ */ e(
+            "input",
+            {
+              type: "text",
+              value: a,
+              onChange: (u) => l(u.target.value),
+              className: "w-full border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#0d9488]/40",
+              placeholder: "Введите логин",
+              required: !0
+            }
+          )
+        ] }),
+        /* @__PURE__ */ t("div", { children: [
+          /* @__PURE__ */ e("label", { className: "block text-sm text-gray-700 mb-1", children: "Пароль" }),
+          /* @__PURE__ */ e(
+            "input",
+            {
+              type: "password",
+              value: m,
+              onChange: (u) => h(u.target.value),
+              className: "w-full border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#0d9488]/40",
+              placeholder: "Введите пароль",
+              required: !0
+            }
+          )
+        ] }),
+        c && /* @__PURE__ */ e("p", { className: "text-sm text-red-600", children: c }),
+        /* @__PURE__ */ t("div", { className: "flex items-center justify-end gap-3 pt-2", children: [
+          /* @__PURE__ */ e(
+            "button",
+            {
+              type: "button",
+              onClick: () => s(null),
+              className: "px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors",
+              children: "Отмена"
+            }
+          ),
+          /* @__PURE__ */ e(
+            "button",
+            {
+              type: "submit",
+              disabled: d,
+              className: "px-4 py-2 bg-[#0d9488] text-white hover:bg-[#0f766e] disabled:opacity-70 transition-colors",
+              children: d ? "Входим..." : "Войти"
+            }
+          )
+        ] })
+      ] })
     ] }) })
   ] });
 }
@@ -1765,10 +1850,17 @@ function He() {
   ] });
 }
 function Pe() {
-  const [r, i] = x(null), [s, a] = x("dashboard"), [l, m] = x(!0);
-  if (!r)
-    return /* @__PURE__ */ e(Se, { onSelectProfile: i });
-  const h = () => {
+  const [r, i] = x(null), [s, a] = x("dashboard"), [l, m] = x(!0), [h, c] = x(null);
+  if (!r || !h)
+    return /* @__PURE__ */ e(
+      Se,
+      {
+        onAuthSuccess: (d) => {
+          i(d.role), c(d), a("dashboard");
+        }
+      }
+    );
+  const o = () => {
     switch (r) {
       case "irk":
         return {
@@ -1805,7 +1897,7 @@ function Pe() {
       default:
         return { title: "", userName: "", tabs: [] };
     }
-  }, c = () => {
+  }, d = () => {
     if (r === "irk")
       switch (s) {
         case "dashboard":
@@ -1843,7 +1935,7 @@ function Pe() {
         default:
           return /* @__PURE__ */ e(D, {});
       }
-  }, o = h();
+  }, p = o();
   return /* @__PURE__ */ t("div", { className: "h-screen flex flex-col bg-white", children: [
     /* @__PURE__ */ t("header", { className: "bg-[#0d9488] border-b border-[#0f766e] px-6 py-4 flex items-center justify-between", children: [
       /* @__PURE__ */ t("div", { className: "flex items-center gap-4", children: [
@@ -1855,7 +1947,7 @@ function Pe() {
             children: l ? /* @__PURE__ */ e(je, { className: "w-5 h-5" }) : /* @__PURE__ */ e(me, { className: "w-5 h-5" })
           }
         ),
-        /* @__PURE__ */ e("h1", { className: "text-xl text-white", children: o.title })
+        /* @__PURE__ */ e("h1", { className: "text-xl text-white", children: p.title })
       ] }),
       /* @__PURE__ */ t("div", { className: "flex items-center gap-4", children: [
         /* @__PURE__ */ t("div", { className: "relative", children: [
@@ -1875,12 +1967,14 @@ function Pe() {
         ] }),
         /* @__PURE__ */ t("button", { className: "flex items-center gap-2 px-3 py-2 hover:bg-[#0f766e] transition-colors text-white", children: [
           /* @__PURE__ */ e(ke, { className: "w-5 h-5" }),
-          /* @__PURE__ */ e("span", { className: "text-sm", children: o.userName })
+          /* @__PURE__ */ e("span", { className: "text-sm", children: h.fullName || p.userName })
         ] }),
         /* @__PURE__ */ e(
           "button",
           {
-            onClick: () => i(null),
+            onClick: () => {
+              i(null), c(null);
+            },
             className: "p-2 hover:bg-[#0f766e] transition-colors text-white",
             title: "Сменить профиль",
             children: /* @__PURE__ */ e(oe, { className: "w-5 h-5" })
@@ -1890,7 +1984,7 @@ function Pe() {
     ] }),
     /* @__PURE__ */ t("div", { className: "flex flex-1 overflow-hidden", children: [
       l && /* @__PURE__ */ t("aside", { className: "w-64 bg-white border-r border-gray-200 p-4", children: [
-        /* @__PURE__ */ e("nav", { className: "space-y-1", children: o.tabs.map((d) => {
+        /* @__PURE__ */ e("nav", { className: "space-y-1", children: p.tabs.map((d) => {
           const p = d.icon;
           return /* @__PURE__ */ t(
             "button",
@@ -1910,7 +2004,7 @@ function Pe() {
           /* @__PURE__ */ e("span", { children: "Настройки" })
         ] }) })
       ] }),
-      /* @__PURE__ */ e("main", { className: "flex-1 overflow-auto p-6 bg-gray-50", children: c() })
+      /* @__PURE__ */ e("main", { className: "flex-1 overflow-auto p-6 bg-gray-50", children: d() })
     ] })
   ] });
 }
