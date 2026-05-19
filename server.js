@@ -3,7 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-const { initDatabase, get, all } = require("./db");
+const { initDatabase, get, all, run } = require("./db");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,7 +11,6 @@ const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname)));
 
 function createToken(user) {
   return jwt.sign(
@@ -74,6 +73,73 @@ app.post("/api/auth/login", async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: "Ошибка авторизации", details: error.message });
+  }
+});
+
+app.post("/api/auth/register", async (req, res) => {
+  try {
+    const { role, login, password, fullName } = req.body || {};
+    if (!role || !login || !password || !fullName) {
+      res.status(400).json({ error: "role, login, password и fullName обязательны" });
+      return;
+    }
+
+    const normalizedLogin = String(login).trim();
+    const normalizedFullName = String(fullName).trim();
+    const normalizedRole = String(role).trim();
+
+    const allowedRoles = new Set(["irk", "tool-warehouse", "laboratory"]);
+    if (!allowedRoles.has(normalizedRole)) {
+      res.status(400).json({ error: "Некорректная роль" });
+      return;
+    }
+
+    if (normalizedLogin.length < 3 || normalizedLogin.length > 64) {
+      res.status(400).json({ error: "Логин должен быть от 3 до 64 символов" });
+      return;
+    }
+
+    if (String(password).length < 4 || String(password).length > 128) {
+      res.status(400).json({ error: "Пароль должен быть от 4 до 128 символов" });
+      return;
+    }
+
+    if (normalizedFullName.length < 3 || normalizedFullName.length > 128) {
+      res.status(400).json({ error: "ФИО должно быть от 3 до 128 символов" });
+      return;
+    }
+
+    const existing = await get("SELECT id FROM users WHERE login = ?", [normalizedLogin]);
+    if (existing) {
+      res.status(409).json({ error: "Пользователь с таким логином уже существует" });
+      return;
+    }
+
+    const passwordHash = bcrypt.hashSync(String(password), 10);
+    const result = await run(
+      "INSERT INTO users (login, password_hash, full_name, role) VALUES (?, ?, ?, ?)",
+      [normalizedLogin, passwordHash, normalizedFullName, normalizedRole]
+    );
+
+    const user = {
+      id: result.lastID,
+      login: normalizedLogin,
+      full_name: normalizedFullName,
+      role: normalizedRole
+    };
+
+    const token = createToken(user);
+    res.status(201).json({
+      token,
+      user: {
+        id: user.id,
+        login: user.login,
+        fullName: user.full_name,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Ошибка регистрации", details: error.message });
   }
 });
 
@@ -141,6 +207,14 @@ app.get("/api/operations", authMiddleware, async (_req, res) => {
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
 });
+
+// If /api route is not found, return JSON (avoid index.html being parsed as JSON on frontend)
+app.use("/api", (_req, res) => {
+  res.status(404).json({ error: "API endpoint не найден" });
+});
+
+// Static site hosting (put AFTER API routes)
+app.use(express.static(path.join(__dirname)));
 
 initDatabase()
   .then(() => {

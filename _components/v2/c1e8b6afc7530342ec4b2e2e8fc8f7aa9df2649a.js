@@ -447,25 +447,26 @@ const Le = [
   ["path", { d: "m6 6 12 12", key: "d8bk6v" }]
 ], je = n("x", Le);
 function Se({ onAuthSuccess: r }) {
-  const [i, s] = x(null), [a, l] = x(""), [m, h] = x(""), [c, o] = x(""), [d, p] = x(!1), g = {
+  const [i, s] = x(null), [a, l] = x(""), [m, h] = x(""), [c, o] = x(""), [d, p] = x(!1), [f, q] = x(""), [k, M] = x(!1), g = {
     irk: "Кладовщик ИРК",
     "tool-warehouse": "Кладовщик инструментального склада",
     laboratory: "Лаборант"
   }, F = async (u) => {
     u.preventDefault(), o(""), p(!0);
     try {
-      const E = await fetch("/api/auth/login", {
+      const E = await fetch(k ? "/api/auth/register" : "/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           role: i,
           login: a,
-          password: m
+          password: m,
+          fullName: k ? f : void 0
         })
       }), B = await E.json();
       if (!E.ok)
         throw new Error(B.error || "Ошибка входа");
-      r(B.user), s(null), l(""), h("");
+      r(B.user), s(null), l(""), h(""), q(""), M(!1);
     } catch (E) {
       o(E.message || "Ошибка входа");
     } finally {
@@ -518,12 +519,26 @@ function Se({ onAuthSuccess: r }) {
       }) })
     ] }) }),
     i && /* @__PURE__ */ e("div", { className: "fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50", children: /* @__PURE__ */ t("div", { className: "w-full max-w-md bg-white border border-gray-200 p-6", children: [
-      /* @__PURE__ */ e("h3", { className: "text-xl text-gray-900 mb-2", children: "Вход в систему" }),
+      /* @__PURE__ */ e("h3", { className: "text-xl text-gray-900 mb-2", children: k ? "Регистрация" : "Вход в систему" }),
       /* @__PURE__ */ t("p", { className: "text-sm text-gray-600 mb-5", children: [
         "Выбран профиль: ",
         g[i]
       ] }),
       /* @__PURE__ */ t("form", { onSubmit: F, className: "space-y-4", children: [
+        k && /* @__PURE__ */ t("div", { children: [
+          /* @__PURE__ */ e("label", { className: "block text-sm text-gray-700 mb-1", children: "ФИО" }),
+          /* @__PURE__ */ e(
+            "input",
+            {
+              type: "text",
+              value: f,
+              onChange: (u) => q(u.target.value),
+              className: "w-full border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#0d9488]/40",
+              placeholder: "Введите ФИО",
+              required: !0
+            }
+          )
+        ] }),
         /* @__PURE__ */ t("div", { children: [
           /* @__PURE__ */ e("label", { className: "block text-sm text-gray-700 mb-1", children: "Логин" }),
           /* @__PURE__ */ e(
@@ -553,12 +568,15 @@ function Se({ onAuthSuccess: r }) {
           )
         ] }),
         c && /* @__PURE__ */ e("p", { className: "text-sm text-red-600", children: c }),
+        /* @__PURE__ */ e("button", { type: "button", onClick: () => {
+          o(""), q(""), M(!k);
+        }, className: "text-sm text-[#0d9488] hover:text-[#0f766e] underline underline-offset-2", children: k ? "У меня уже есть аккаунт" : "Зарегистрироваться" }),
         /* @__PURE__ */ t("div", { className: "flex items-center justify-end gap-3 pt-2", children: [
           /* @__PURE__ */ e(
             "button",
             {
               type: "button",
-              onClick: () => s(null),
+              onClick: () => (s(null), o(""), q(""), M(!1)),
               className: "px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors",
               children: "Отмена"
             }
@@ -569,7 +587,7 @@ function Se({ onAuthSuccess: r }) {
               type: "submit",
               disabled: d,
               className: "px-4 py-2 bg-[#0d9488] text-white hover:bg-[#0f766e] disabled:opacity-70 transition-colors",
-              children: d ? "Входим..." : "Войти"
+              children: d ? (k ? "Регистрируем..." : "Входим...") : k ? "Зарегистрироваться" : "Войти"
             }
           )
         ] })
