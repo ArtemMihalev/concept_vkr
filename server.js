@@ -214,6 +214,7 @@ app.use("/api", (_req, res) => {
 });
 
 // Static site hosting (put AFTER API routes)
+app.use(express.static(path.join(__dirname, "client-dist")));
 app.use(express.static(path.join(__dirname)));
 
 initDatabase()
