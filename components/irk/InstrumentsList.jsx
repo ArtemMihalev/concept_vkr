@@ -1,194 +1,142 @@
-import { useState } from "react";
-import { AlertCircle, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Search } from "lucide-react";
+import { useFetch } from "../api/useFetch.js";
+import { INSTRUMENT_STATUS, formatDate } from "../shared/statusMaps.js";
 
-const INSTRUMENTS = [
-  {
-    id: 1,
-    name: "Штангенциркуль ШЦ-I-150",
-    type: "measuring",
-    category: "Измерительный",
-    invNumber: "ИН-001234",
-    status: "available",
-    location: "ИРК Цех №1",
-    nextVerification: "15.04.2026"
-  },
-  {
-    id: 2,
-    name: "Микрометр МК-25",
-    type: "measuring",
-    category: "Измерительный",
-    invNumber: "ИН-001235",
-    status: "issued",
-    location: "У рабочего: Иванов И.И.",
-    nextVerification: "18.04.2026"
-  },
-  {
-    id: 3,
-    name: "Ключ гаечный 17мм",
-    type: "locksmith",
-    category: "Слесарно-монтажный",
-    quantity: 25,
-    status: "available",
-    location: "ИРК Цех №1"
-  },
-  {
-    id: 4,
-    name: "Отвертка шлицевая 5мм",
-    type: "locksmith",
-    category: "Слесарно-монтажный",
-    quantity: 5,
-    status: "low-stock",
-    location: "ИРК Цех №1"
-  },
-  {
-    id: 5,
-    name: "Калибр-пробка",
-    type: "measuring",
-    category: "Измерительный",
-    invNumber: "ИН-001236",
-    status: "verification",
-    location: "Метрологическая лаборатория",
-    nextVerification: "20.04.2026"
-  }
+const TYPE_OPTIONS = [
+  { id: "all", label: "Все типы" },
+  { id: "locksmith", label: "Слесарный" },
+  { id: "measuring", label: "Мерительный" }
 ];
 
-function statusBadge(status) {
-  const map = {
-    available: { text: "В наличии", className: "bg-green-50 text-green-700" },
-    issued: { text: "Выдан", className: "bg-[#e0f2f1] text-[#0d9488]" },
-    verification: { text: "На поверке", className: "bg-yellow-50 text-yellow-700" },
-    "low-stock": { text: "Мало остатков", className: "bg-red-50 text-red-700" }
-  };
-  return map[status];
-}
+const STATUS_OPTIONS = [
+  { id: "all", label: "Все статусы" },
+  { id: "available", label: "В наличии" },
+  { id: "issued", label: "Выдан" },
+  { id: "verification", label: "На поверке" },
+  { id: "written_off", label: "Списан" }
+];
 
 export function InstrumentsList() {
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState("all");
+  const [toolType, setToolType] = useState("all");
+  const [status, setStatus] = useState("all");
+  const [location, setLocation] = useState("all");
 
-  const filtered = INSTRUMENTS.filter((item) => {
-    const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
-    const matchesType = typeFilter === "all" || item.type === typeFilter;
-    return matchesSearch && matchesType;
-  });
+  const query = useMemo(() => {
+    const p = new URLSearchParams();
+    if (toolType !== "all") p.set("toolType", toolType);
+    if (status !== "all") p.set("status", status);
+    if (location !== "all") p.set("location", location);
+    if (search) p.set("search", search);
+    return `/api/instruments?${p.toString()}`;
+  }, [toolType, status, location, search]);
+
+  const { data: instruments, loading } = useFetch(query, { deps: [query] });
+  const { data: locations } = useFetch("/api/instruments/locations");
+
+  const list = instruments || [];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl text-gray-900">Инструменты</h2>
-          <p className="text-gray-600 mt-1">Управление каталогом инструментов</p>
+      <div>
+        <h2 className="text-2xl text-gray-900">Инструменты</h2>
+        <p className="text-gray-600 mt-1">Каталог слесарного и мерительного инструмента</p>
+      </div>
+
+      <div className="bg-white border border-gray-200 p-4 space-y-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Поиск по наименованию..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0d9488]"
+          />
         </div>
-        <button
-          type="button"
-          className="flex items-center gap-2 px-4 py-2 bg-[#0d9488] text-white hover:bg-[#0f766e] transition-colors"
+        <div className="flex flex-wrap gap-2">
+          {TYPE_OPTIONS.map((o) => (
+            <FilterBtn key={o.id} active={toolType === o.id} onClick={() => setToolType(o.id)} label={o.label} />
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {STATUS_OPTIONS.map((o) => (
+            <FilterBtn key={o.id} active={status === o.id} onClick={() => setStatus(o.id)} label={o.label} />
+          ))}
+        </div>
+        <select
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          className="border border-gray-300 px-3 py-2 text-sm"
         >
-          <Plus className="w-5 h-5" />
-          Добавить инструмент
-        </button>
+          <option value="all">Все места хранения</option>
+          {(locations || []).map((loc) => (
+            <option key={loc} value={loc}>
+              {loc}
+            </option>
+          ))}
+        </select>
       </div>
 
-      <div className="bg-white border border-gray-200 p-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Поиск по наименованию..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0d9488]"
-            />
-          </div>
-          <div className="flex gap-2">
-            {[
-              { id: "all", label: "Все" },
-              { id: "measuring", label: "Измерительный" },
-              { id: "locksmith", label: "Слесарный" }
-            ].map((btn) => (
-              <button
-                key={btn.id}
-                type="button"
-                onClick={() => setTypeFilter(btn.id)}
-                className={`px-4 py-2 border ${
-                  typeFilter === btn.id
-                    ? "bg-[#0d9488] text-white border-[#0d9488]"
-                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-                }`}
-              >
-                {btn.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white border border-gray-200 overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs text-gray-500 uppercase tracking-wider">Наименование</th>
-              <th className="px-6 py-3 text-left text-xs text-gray-500 uppercase tracking-wider">Категория</th>
-              <th className="px-6 py-3 text-left text-xs text-gray-500 uppercase tracking-wider">Инв. номер / Кол-во</th>
-              <th className="px-6 py-3 text-left text-xs text-gray-500 uppercase tracking-wider">Статус</th>
-              <th className="px-6 py-3 text-left text-xs text-gray-500 uppercase tracking-wider">Местонахождение</th>
-              <th className="px-6 py-3 text-left text-xs text-gray-500 uppercase tracking-wider">Поверка</th>
-              <th className="px-6 py-3 text-right text-xs text-gray-500 uppercase tracking-wider">Действия</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filtered.map((item) => {
-              const badge = statusBadge(item.status);
-              return (
-                <tr key={item.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{item.name}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-600">{item.category}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {item.invNumber || `${item.quantity} шт.`}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 inline-flex text-xs ${badge.className}`}>{badge.text}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-600">{item.location}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-600">{item.nextVerification || "—"}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                    <div className="flex items-center justify-end gap-2">
-                      <button type="button" className="text-[#0d9488] hover:text-[#0f766e]">
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button type="button" className="text-red-600 hover:text-red-700">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="bg-[#f0fdfa] border border-[#0d9488] p-4 flex items-start gap-3">
-        <AlertCircle className="w-5 h-5 text-[#0d9488] flex-shrink-0 mt-0.5" />
-        <div>
-          <p className="text-sm text-gray-900">Всего инструментов: {INSTRUMENTS.length}</p>
-          <p className="text-sm text-gray-700 mt-1">
-            В наличии: {INSTRUMENTS.filter((d) => d.status === "available").length} • Выдано:{" "}
-            {INSTRUMENTS.filter((d) => d.status === "issued").length} • На поверке:{" "}
-            {INSTRUMENTS.filter((d) => d.status === "verification").length}
-          </p>
-        </div>
+      <div className="bg-white border border-gray-200 overflow-x-auto">
+        {loading ? (
+          <p className="p-6 text-gray-600">Загрузка...</p>
+        ) : (
+          <table className="w-full min-w-[800px]">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs text-gray-500 uppercase">Наименование</th>
+                <th className="px-6 py-3 text-left text-xs text-gray-500 uppercase">Категория</th>
+                <th className="px-6 py-3 text-left text-xs text-gray-500 uppercase">Инв. / Кол-во</th>
+                <th className="px-6 py-3 text-left text-xs text-gray-500 uppercase">Остаток</th>
+                <th className="px-6 py-3 text-left text-xs text-gray-500 uppercase">Статус</th>
+                <th className="px-6 py-3 text-left text-xs text-gray-500 uppercase">Место хранения</th>
+                <th className="px-6 py-3 text-left text-xs text-gray-500 uppercase">След. поверка</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {list.map((item) => {
+                const badge = INSTRUMENT_STATUS[item.status] || INSTRUMENT_STATUS.available;
+                const isMeasuring = item.toolType === "measuring";
+                return (
+                  <tr key={item.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 text-sm text-gray-900">{item.name}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{item.categoryName}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {isMeasuring ? item.inventoryNumber : `${item.totalQuantity} шт.`}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {isMeasuring ? "1 ед." : `${item.stockQuantity} / ${item.totalQuantity}`}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 text-xs ${badge.className}`}>{badge.text}</span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{item.location}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      {isMeasuring ? formatDate(item.nextVerificationDate) : "—"}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
+  );
+}
+
+function FilterBtn({ active, onClick, label }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-3 py-1.5 text-sm border ${
+        active ? "bg-[#0d9488] text-white border-[#0d9488]" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+      }`}
+    >
+      {label}
+    </button>
   );
 }

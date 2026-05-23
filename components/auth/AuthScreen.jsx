@@ -61,7 +61,7 @@ export function AuthScreen({ onAuthSuccess }) {
       if (data.token) {
         localStorage.setItem("authToken", data.token);
       }
-      onAuthSuccess(data.user);
+      onAuthSuccess({ ...data.user, token: data.token });
       setSelectedRole(null);
       setLogin("");
       setPassword("");

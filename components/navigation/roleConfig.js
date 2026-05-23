@@ -5,7 +5,10 @@ import {
   FileText,
   Archive,
   FlaskConical,
-  ClipboardCheck
+  ClipboardCheck,
+  BookOpen,
+  ShoppingCart,
+  History
 } from "lucide-react";
 
 /** @typedef {"irk" | "tool-warehouse" | "laboratory"} UserRole */
@@ -18,13 +21,14 @@ export function getShellConfig(role) {
   switch (role) {
     case "irk":
       return {
-        title: "ИС Учета Инструментов ИРК",
+        title: "ИС Учёта Инструментов ИРК",
         userName: "Кладовщик ИРК",
         tabs: [
-          { id: "dashboard", name: "Панель управления", icon: LayoutDashboard },
+          { id: "dashboard", name: "Информационная панель", icon: LayoutDashboard },
           { id: "instruments", name: "Инструменты", icon: Package },
           { id: "operations", name: "Операции", icon: ArrowRightLeft },
-          { id: "reports", name: "Отчеты", icon: FileText }
+          { id: "metrology", name: "Метрология", icon: FlaskConical },
+          { id: "documents", name: "Документы", icon: FileText }
         ]
       };
     case "tool-warehouse":
@@ -32,10 +36,9 @@ export function getShellConfig(role) {
         title: "Инструментальный склад",
         userName: "Кладовщик склада",
         tabs: [
-          { id: "dashboard", name: "Обзор склада", icon: LayoutDashboard },
-          { id: "inventory", name: "Складской учет", icon: Archive },
-          { id: "operations", name: "Движения", icon: ArrowRightLeft },
-          { id: "reports", name: "Отчеты", icon: FileText }
+          { id: "inventory", name: "Складской учёт", icon: Archive },
+          { id: "orders", name: "Заказы", icon: ShoppingCart },
+          { id: "movements", name: "Движение инструментов", icon: History }
         ]
       };
     case "laboratory":
@@ -43,12 +46,19 @@ export function getShellConfig(role) {
         title: "Метрологическая лаборатория",
         userName: "Лаборант",
         tabs: [
-          { id: "dashboard", name: "Обзор", icon: ClipboardCheck },
-          { id: "verifications", name: "Поверки", icon: Package },
-          { id: "reports", name: "Отчеты", icon: FileText }
+          { id: "dashboard", name: "Информационная панель", icon: LayoutDashboard },
+          { id: "verifications", name: "Обзор поверок", icon: ClipboardCheck },
+          { id: "journal", name: "Журнал поверок", icon: BookOpen },
+          { id: "documents", name: "Документы", icon: FileText }
         ]
       };
     default:
       return { title: "", userName: "", tabs: [] };
   }
+}
+
+/** @param {UserRole} role */
+export function getDefaultTab(role) {
+  if (role === "tool-warehouse") return "inventory";
+  return "dashboard";
 }

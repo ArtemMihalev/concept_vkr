@@ -1,69 +1,88 @@
-import { Trash2 } from "lucide-react";
+import { useState } from "react";
+import { api } from "../../api/client.js";
 
 export function ReceiptForm() {
+  const [documentBasis, setDocumentBasis] = useState("");
+  const [operationDate, setOperationDate] = useState(new Date().toISOString().slice(0, 10));
+  const [items, setItems] = useState([{ name: "", category: "Слесарно-монтажный", quantity: 1 }]);
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await api.post("/api/operations/receipt", { documentBasis, operationDate, items });
+      setMessage("Поступление оформлено");
+      setItems([{ name: "", category: "Слесарно-монтажный", quantity: 1 }]);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Ошибка");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <div className="space-y-6">
-      <h3 className="text-xl text-gray-900">Поступление инструмента</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <h3 className="text-xl text-gray-900">Поступление</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm text-gray-700 mb-2">Документ-основание</label>
+          <label className="block text-sm text-gray-700 mb-1">Документ-основание</label>
           <input
             type="text"
-            placeholder="Номер накладной..."
-            className="w-full px-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0d9488]"
+            value={documentBasis}
+            onChange={(e) => setDocumentBasis(e.target.value)}
+            className="w-full border border-gray-300 px-4 py-2"
+            required
           />
         </div>
         <div>
-          <label className="block text-sm text-gray-700 mb-2">Дата поступления</label>
+          <label className="block text-sm text-gray-700 mb-1">Дата</label>
           <input
             type="date"
-            defaultValue="2026-04-02"
-            className="w-full px-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0d9488]"
+            value={operationDate}
+            onChange={(e) => setOperationDate(e.target.value)}
+            className="w-full border border-gray-300 px-4 py-2"
+            required
           />
         </div>
       </div>
-      <div>
-        <label className="block text-sm text-gray-700 mb-2">Инструменты</label>
-        <div className="space-y-3">
-          <div className="flex gap-3">
+      <div className="space-y-3">
+        {items.map((item, idx) => (
+          <div key={idx} className="flex gap-3">
             <input
               type="text"
               placeholder="Наименование"
-              className="flex-1 px-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0d9488]"
+              value={item.name}
+              onChange={(e) => {
+                const next = [...items];
+                next[idx].name = e.target.value;
+                setItems(next);
+              }}
+              className="flex-1 border border-gray-300 px-3 py-2"
+              required
             />
             <input
               type="number"
-              placeholder="Кол-во"
-              className="w-24 px-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0d9488]"
+              min={1}
+              value={item.quantity}
+              onChange={(e) => {
+                const next = [...items];
+                next[idx].quantity = Number(e.target.value);
+                setItems(next);
+              }}
+              className="w-24 border border-gray-300 px-3 py-2"
             />
-            <button type="button" className="px-4 py-2 bg-[#0d9488] text-white hover:bg-[#0f766e]">
-              Добавить
-            </button>
           </div>
-        </div>
-      </div>
-      <div className="border-t border-gray-200 pt-4">
-        <h4 className="text-sm text-gray-900 mb-3">Добавленные позиции</h4>
-        <div className="space-y-2">
-          <div className="flex items-center justify-between p-3 bg-gray-50">
-            <div>
-              <p className="text-gray-900">Отвертка шлицевая 5мм</p>
-              <p className="text-sm text-gray-600">Количество: 10 шт.</p>
-            </div>
-            <button type="button" className="text-red-600 hover:text-red-700">
-              <Trash2 className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      </div>
-      <div className="flex gap-4 justify-end">
-        <button type="button" className="px-6 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">
-          Отмена
-        </button>
-        <button type="button" className="px-6 py-2 bg-[#0d9488] text-white hover:bg-[#0f766e] transition-colors">
-          Оприходовать
+        ))}
+        <button type="button" onClick={() => setItems([...items, { name: "", category: "Слесарно-монтажный", quantity: 1 }])} className="text-sm text-[#0d9488]">
+          + Позиция
         </button>
       </div>
-    </div>
+      {message && <p className="text-sm">{message}</p>}
+      <button type="submit" disabled={loading} className="px-6 py-2 bg-[#0d9488] text-white">
+        Оформить поступление
+      </button>
+    </form>
   );
 }

@@ -1,113 +1,191 @@
-import { AlertCircle, Calendar, Package, TrendingUp, Users } from "lucide-react";
-import { StatCard } from "../shared/StatCard.jsx";
-
-const STATS = [
-  { title: "Всего инструментов", value: "1,248", change: "+12%", icon: Package },
-  { title: "Выдано сегодня", value: "87", change: "+5%", icon: Users },
-  { title: "На поверке", value: "23", change: "0%", icon: Calendar },
-  { title: "Требует внимания", value: "8", change: "+2", icon: AlertCircle }
-];
-
-const RECENT_OPS = [
-  { id: 1, type: "Выдача", instrument: "Штангенциркуль ШЦ-I-150", employee: "Иванов И.И.", time: "10:30" },
-  { id: 2, type: "Возврат", instrument: "Микрометр МК-25", employee: "Петров П.П.", time: "10:15" },
-  { id: 3, type: "Выдача", instrument: "Ключ гаечный 17мм", employee: "Сидоров С.С.", time: "09:45" },
-  { id: 4, type: "Поступление", instrument: "Отвертка шлицевая 5мм", employee: "Система", time: "09:30" }
-];
-
-const UPCOMING = [
-  { id: 1, instrument: "Штангенциркуль ШЦ-I-150", invNumber: "ИН-001234", dueDate: "15.04.2026", daysLeft: 13 },
-  { id: 2, instrument: "Микрометр МК-25", invNumber: "ИН-001235", dueDate: "18.04.2026", daysLeft: 16 },
-  { id: 3, instrument: "Калибр-пробка", invNumber: "ИН-001236", dueDate: "20.04.2026", daysLeft: 18 }
-];
-
-function opBadgeClass(type) {
-  if (type === "Выдача") return "bg-[#e0f2f1] text-[#0d9488]";
-  if (type === "Возврат") return "bg-blue-50 text-blue-700";
-  return "bg-gray-100 text-gray-700";
-}
-
-function daysLeftClass(days) {
-  if (days < 7) return "text-red-600";
-  if (days < 14) return "text-yellow-600";
-  return "text-gray-600";
-}
+import { useState } from "react";
+import { Bell, Calendar, Package, Send } from "lucide-react";
+import { useFetch } from "../api/useFetch.js";
+import { api } from "../api/client.js";
+import { formatDate, URGENCY } from "../shared/statusMaps.js";
 
 export function IrkDashboard() {
+  const { data, loading, reload } = useFetch("/api/dashboard/irk");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function handleReceiptVoucher() {
+    setBusy(true);
+    try {
+      const instruments = await api.get("/api/instruments?toolType=measuring&status=available");
+      const toSend = instruments
+        .filter((i) => i.nextVerificationDate && daysLeft(i.nextVerificationDate) <= 30)
+        .map((i) => i.id)
+        .slice(0, 5);
+      if (toSend.length === 0) {
+        setMessage("Нет инструментов для отправки на поверку");
+        return;
+      }
+      await api.post("/api/documents/receipt-voucher", { instrumentIds: toSend });
+      setMessage("Вещевая квитанция сформирована");
+      reload();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Ошибка");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRemind(row) {
+    setBusy(true);
+    try {
+      await api.post("/api/notifications/remind", {
+        employeeName: row.employeeName,
+        instrumentName: row.instrumentName
+      });
+      setMessage(`Напоминание отправлено: ${row.employeeName}`);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Ошибка");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (loading) {
+    return <p className="text-gray-600">Загрузка панели...</p>;
+  }
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl text-gray-900">Панель управления</h2>
-        <p className="text-gray-600 mt-1">Обзор состояния инструментального хозяйства</p>
+        <h2 className="text-2xl text-gray-900">Информационная панель</h2>
+        <p className="text-gray-600 mt-1">Оперативный контроль инструментального хозяйства ИРК</p>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {STATS.map((s) => (
-          <StatCard key={s.title} {...s} />
-        ))}
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <h3 className="text-lg text-gray-900">Последние операции</h3>
+
+      {message && (
+        <div className="bg-[#f0fdfa] border border-[#0d9488] px-4 py-3 text-sm text-gray-800">{message}</div>
+      )}
+
+      <div className="bg-white border border-gray-200">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-[#0d9488]" />
+            <h3 className="text-lg text-gray-900">Требуют отправки на поверку</h3>
           </div>
-          <div className="p-6 space-y-4">
-            {RECENT_OPS.map((op) => (
-              <div key={op.id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-                <div className="flex-1">
-                  <p className="text-gray-900">{op.instrument}</p>
-                  <p className="text-sm text-gray-600">{op.employee}</p>
-                </div>
-                <div className="text-right">
-                  <span className={`inline-block px-3 py-1 text-xs ${opBadgeClass(op.type)}`}>{op.type}</span>
-                  <p className="text-sm text-gray-500 mt-1">{op.time}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={handleReceiptVoucher}
+            className="flex items-center gap-2 px-4 py-2 bg-[#0d9488] text-white hover:bg-[#0f766e] disabled:opacity-60 text-sm"
+          >
+            <Send className="w-4 h-4" />
+            Сформировать вещевую квитанцию
+          </button>
         </div>
-        <div className="bg-white border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <h3 className="text-lg text-gray-900">Предстоящие поверки</h3>
-          </div>
-          <div className="p-6 space-y-4">
-            {UPCOMING.map((item) => (
-              <div key={item.id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-                <div className="flex-1">
-                  <p className="text-gray-900">{item.instrument}</p>
-                  <p className="text-sm text-gray-600">{item.invNumber}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-gray-900">{item.dueDate}</p>
-                  <p className={`text-sm mt-1 ${daysLeftClass(item.daysLeft)}`}>
-                    Через {item.daysLeft} дней
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs text-gray-500 uppercase">Наименование</th>
+                <th className="px-6 py-3 text-left text-xs text-gray-500 uppercase">Инв. номер</th>
+                <th className="px-6 py-3 text-left text-xs text-gray-500 uppercase">Крайний срок</th>
+                <th className="px-6 py-3 text-left text-xs text-gray-500 uppercase">Статус</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {(data?.verificationDue || []).map((row, idx) => {
+                const urg = URGENCY[row.urgency] || URGENCY.later;
+                return (
+                  <tr key={idx} className="hover:bg-gray-50">
+                    <td className="px-6 py-3 text-sm text-gray-900">{row.name}</td>
+                    <td className="px-6 py-3 text-sm text-gray-600">{row.inventoryNumber}</td>
+                    <td className="px-6 py-3 text-sm text-gray-900">{formatDate(row.dueDate)}</td>
+                    <td className="px-6 py-3">
+                      <span className={`px-2 py-1 text-xs ${urg.className}`}>{urg.text}</span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
-      <div className="bg-white border border-gray-200 p-6">
-        <h3 className="text-lg text-gray-900 mb-4">Быстрые действия</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <button type="button" className="p-4 border-2 border-gray-200 hover:border-[#0d9488] hover:bg-[#f0fdfa] transition-all">
-            <Package className="w-8 h-8 text-[#0d9488] mx-auto mb-2" />
-            <p className="text-sm text-gray-900">Выдать инструмент</p>
-          </button>
-          <button type="button" className="p-4 border-2 border-gray-200 hover:border-[#0d9488] hover:bg-[#f0fdfa] transition-all">
-            <TrendingUp className="w-8 h-8 text-[#0d9488] mx-auto mb-2" />
-            <p className="text-sm text-gray-900">Принять возврат</p>
-          </button>
-          <button type="button" className="p-4 border-2 border-gray-200 hover:border-[#0d9488] hover:bg-[#f0fdfa] transition-all">
-            <Calendar className="w-8 h-8 text-[#0d9488] mx-auto mb-2" />
-            <p className="text-sm text-gray-900">Отправить на поверку</p>
-          </button>
-          <button type="button" className="p-4 border-2 border-gray-200 hover:border-[#0d9488] hover:bg-[#f0fdfa] transition-all">
-            <AlertCircle className="w-8 h-8 text-[#0d9488] mx-auto mb-2" />
-            <p className="text-sm text-gray-900">Списать инструмент</p>
-          </button>
+
+      <div className="bg-white border border-gray-200">
+        <div className="p-6 border-b border-gray-200 flex items-center gap-2">
+          <Package className="w-5 h-5 text-[#0d9488]" />
+          <h3 className="text-lg text-gray-900">Подготовка наборов к смене</h3>
+        </div>
+        <div className="p-6 space-y-4">
+          {(data?.shiftSets || []).map((set) => (
+            <div key={set.id} className="border border-gray-100 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-gray-900">
+                  {set.shiftName} — {formatDate(set.shiftDate)}
+                </p>
+                <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700">{set.specialization}</span>
+              </div>
+              <p className="text-sm text-gray-600 mb-2">Статус: {set.status === "ready" ? "Готов" : "Подготовка"}</p>
+              <ul className="text-sm text-gray-700 list-disc list-inside">
+                {(set.tools || []).map((t, i) => (
+                  <li key={i}>
+                    {t.name} — {t.qty} шт.
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white border border-gray-200">
+        <div className="p-6 border-b border-gray-200 flex items-center gap-2">
+          <Bell className="w-5 h-5 text-red-500" />
+          <h3 className="text-lg text-gray-900">Отсутствующие инструменты</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs text-gray-500 uppercase">ФИО</th>
+                <th className="px-6 py-3 text-left text-xs text-gray-500 uppercase">Инструмент</th>
+                <th className="px-6 py-3 text-left text-xs text-gray-500 uppercase">Дата выдачи</th>
+                <th className="px-6 py-3 text-left text-xs text-gray-500 uppercase">Дней просрочки</th>
+                <th className="px-6 py-3 text-right text-xs text-gray-500 uppercase">Действие</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {(data?.overdueIssued || []).map((row, idx) => (
+                <tr key={idx} className="hover:bg-gray-50">
+                  <td className="px-6 py-3 text-sm text-gray-900">{row.employeeName}</td>
+                  <td className="px-6 py-3 text-sm text-gray-600">
+                    {row.instrumentName} ({row.inventoryNumber})
+                  </td>
+                  <td className="px-6 py-3 text-sm text-gray-600">{formatDate(row.issuedAt)}</td>
+                  <td className="px-6 py-3 text-sm text-red-600">{row.daysOverdue}</td>
+                  <td className="px-6 py-3 text-right">
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => handleRemind(row)}
+                      className="text-sm text-[#0d9488] hover:text-[#0f766e]"
+                    >
+                      Отправить напоминание
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {(data?.overdueIssued || []).length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-500">
+                    Просроченных выдач нет
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   );
+}
+
+function daysLeft(dateStr) {
+  const d = new Date(dateStr);
+  return Math.ceil((d - new Date()) / (1000 * 60 * 60 * 24));
 }
