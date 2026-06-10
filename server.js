@@ -12,8 +12,10 @@ const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
 app.use(cors());
 app.use(express.json());
 
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "30d";
+
 function createToken(user) {
-  return jwt.sign({ sub: user.id, login: user.login, role: user.role }, JWT_SECRET, { expiresIn: "12h" });
+  return jwt.sign({ sub: user.id, login: user.login, role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 }
 
 function authMiddleware(req, res, next) {

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FlaskConical, Package, Wrench } from "lucide-react";
+import { setAuthToken } from "../api/client.js";
 
 const ROLE_LABELS = {
   irk: "Кладовщик ИРК",
@@ -58,9 +59,7 @@ export function AuthScreen({ onAuthSuccess }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Ошибка входа");
-      if (data.token) {
-        localStorage.setItem("authToken", data.token);
-      }
+      if (data.token) setAuthToken(data.token);
       onAuthSuccess({ ...data.user, token: data.token });
       setSelectedRole(null);
       setLogin("");

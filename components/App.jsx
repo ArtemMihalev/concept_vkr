@@ -36,7 +36,11 @@ export function App() {
         setRole(profile.role);
         setActiveTab(getDefaultTab(profile.role));
       })
-      .catch(() => setAuthToken(null))
+      .catch((err) => {
+        if (err && typeof err === "object" && "status" in err && err.status === 401) {
+          setAuthToken(null);
+        }
+      })
       .finally(() => setBootstrapping(false));
   }, []);
 

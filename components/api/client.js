@@ -32,7 +32,9 @@ export async function apiRequest(path, options = {}) {
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(data.error || `Ошибка запроса (${res.status})`);
+    const error = new Error(data.error || `Ошибка запроса (${res.status})`);
+    error.status = res.status;
+    throw error;
   }
   return data;
 }
